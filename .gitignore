@@ -1,0 +1,8 @@
+.obsidian/
+.DS_Store
+*.conf
+*.config
+output/
+*.log
+*.txt~
+filescan-*.py
