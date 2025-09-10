@@ -1,1 +1,25 @@
-excludeSuffix: 3g2|3gp|7z|aac|abw|aif|aifc|aiff|apk|arc|au|avi|azw|bat|bin|bmp|bz|bz2|cmd|cmx|cod|com|csh|css|csv|dll|doc|docx|ear|eot|epub|exe|flac|flv|gif|gz|ico|ics|ief|jar|jfif|jpe|jpeg|jpg|less|m3u|mid|midi|mjs|mkv|mov|mp2|mp3|mp4|mpa|mpe|mpeg|mpg|mpkg|mpp|mpv2|odp|ods|odt|oga|ogg|ogv|ogx|otf|pbm|pdf|pgm|png|pnm|ppm|ppt|pptx|ra|ram|rar|ras|rgb|rmi|rtf|scss|sh|snd|svg|swf|tar|tif|tiff|ttf|vsd|war|wav|weba|webm|webp|wmv|woff|woff2|xbm|xls|xlsx|xpm|xul|xwd|zip|so|TTF|dex
+# FileScan 配置文件
+# 配置说明：
+# - excludeSuffix: 扫描时需要排除的文件后缀列表，支持多个后缀，用|分隔
+# - includeSuffix: 扫描时需要包含的文件后缀列表（优先级高于excludeSuffix）
+
+# 需要包含的文件后缀（主要是编程语言源文件和配置文件）
+# 注意：即使这些后缀同时在excludeSuffix中，也会被优先包含
+includeSuffix:
+  - js|json|html
+  - php|py|jsp|jspx|asp|aspx
+  - rb|go|java|c|cpp
+  - cs
+  - swift
+  - kt
+  - ts
+  - jsx
+  - tsx
+  - vue
+
+# 需要排除的文件后缀（主要是二进制文件、媒体文件、文档等）
+excludeSuffix:
+  - jpe|jpeg|jpg|png
+  - dll|exe
+  - doc|docx|pdf|ppt|pptx|xls|xlsx
+  - 3g2|3gp|7z|aac|abw|aif|aifc|aiff|apk|arc|au|avi|azw|bat|bin|bmp|bz|bz2|cmd|cmx|cod|com|csh|css|csv|ear|eot|epub|flac|flv|gif|gz|ico|ics|ief|jar|jfif|less|m3u|mid|midi|mjs|mkv|mov|mp2|mp3|mp4|mpa|mpe|mpeg|mpg|mpkg|mpp|mpv2|odp|ods|odt|oga|ogg|ogv|ogx|otf|pbm|pgm|pnm|ppm|ra|ram|rar|ras|rgb|rmi|rtf|scss|sh|snd|svg|swf|tar|tif|tiff|ttf|vsd|war|wav|weba|webm|webp|wmv|woff|woff2|xbm|xpm|xul|xwd|zip|so|TTF|dex
