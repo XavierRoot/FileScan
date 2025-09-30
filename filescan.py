@@ -11,7 +11,14 @@ print('配置文件路径:',configPath)
 def load_rules():
     with open(configPath+'rules.yml', 'r', encoding='utf-8') as f:
         rules = yaml.safe_load(f)
-        compiled_rules = {rule_name: re.compile(rule_pattern) for rule_name, rule_pattern in rules.items()}
+        compiled_rules = {}
+        
+        for rule_name, rule_content in rules.items():
+            if isinstance(rule_content, list):
+                compiled_rules[rule_name] = [re.compile(pattern) for pattern in rule_content]
+            else:
+                compiled_rules[rule_name] = re.compile(rule_content)
+                
         return compiled_rules
 
 
@@ -19,18 +26,28 @@ def load_config():
     with open(configPath+'config.yml', 'r', encoding='utf-8') as f:
         raw_config = yaml.safe_load(f)
 
-    exclude_config = raw_config.get('excludeSuffix', '')
+    # 处理排除的后缀
+    exclude_config = raw_config.get('excludeSuffix', [])
+    exclude_suffixes = []
     if isinstance(exclude_config, str):
         exclude_suffixes = exclude_config.split('|') if exclude_config else []
-    else:
-        exclude_suffixes = exclude_config
+    elif isinstance(exclude_config, list):
+        for item in exclude_config:
+            if isinstance(item, str):
+                exclude_suffixes.extend(item.split('|'))
+    #print('exclude_suffixes:',exclude_suffixes)
     
-    include_config = raw_config.get('includeSuffix', '')
+    # 处理包含的后缀
+    include_config = raw_config.get('includeSuffix', [])
+    include_suffixes = []
     if isinstance(include_config, str):
         include_suffixes = include_config.split('|') if include_config else []
-    else:
-        include_suffixes = include_config
-    
+    elif isinstance(include_config, list):
+        # 处理列表中的每个元素，每个元素可能包含用|分隔的多个后缀
+        for item in include_config:
+            if isinstance(item, str):
+                include_suffixes.extend(item.split('|'))
+    #print('include_suffixes:',include_suffixes)
     return {
         'exclude_suffixes': exclude_suffixes,
         'include_suffixes': include_suffixes
@@ -49,9 +66,16 @@ def scan_file(file_path, rules):
     with open(file_path, 'r', encoding='utf-8', errors='ignore', buffering=8192) as f:
         for line_num, line in enumerate(f, 1):
             for rule_name, rule_pattern in rules.items():
-                matches = rule_pattern.finditer(line)
-                for match in matches:
-                    rule_results[rule_name].append((file_path, line_num, match.group()))
+                if isinstance(rule_pattern, list):
+                    # 处理正则组
+                    for pattern in rule_pattern:
+                        matches = pattern.finditer(line)
+                        for match in matches:
+                            rule_results[rule_name].append((file_path, line_num, match.group()))
+                else:
+                    matches = rule_pattern.finditer(line)
+                    for match in matches:
+                        rule_results[rule_name].append((file_path, line_num, match.group()))
     return rule_results
 
 
@@ -79,8 +103,7 @@ def scan_directory(directory, rules, exclude_suffixes, include_suffixes):
 def process_special_rules(results, compiled_rules):
     processed_results = {rule_name: matches.copy() for rule_name, matches in results.items()}
     
-    # 处理Linkfinder规则
-    # 过滤条件：
+    # 处理Linkfinder规则，过滤条件：
     # 1. 过滤与 All URL重叠部分
     # 2. 移除匹配内容中最外层的单双引号
     if "Linkfinder" in processed_results:
@@ -92,8 +115,18 @@ def process_special_rules(results, compiled_rules):
             file_path = match[0]
             match_content = match[2]
             
-            all_url_pattern = compiled_rules['All URL']
-            contains_url = bool(re.search(all_url_pattern, match_content))
+            # 检查是否包含URL - 处理可能是规则组的情况
+            contains_url = False
+            if 'All URL' in compiled_rules:
+                all_url_rule = compiled_rules['All URL']
+                if isinstance(all_url_rule, list):
+                    # 处理规则组
+                    for pattern in all_url_rule:
+                        if re.search(pattern, match_content):
+                            contains_url = True
+                            break
+                else:
+                    contains_url = bool(re.search(all_url_rule, match_content))
             
             if not contains_url :
                 # 移除最外层的单双引号
@@ -170,25 +203,29 @@ def main():
                         help='控制输出内容的丰富程度：1-simple(简单信息)、2-standard(标准信息)、3-detailed(详细信息)')
     args = parser.parse_args()
 
-    start_time = time.time()
-    print("程序开始运行...")
+    try:
+        start_time = time.time()
+        print("程序开始运行...")
 
-    compiled_rules = load_rules()
-    config = load_config()
-    exclude_suffixes = config['exclude_suffixes']
-    include_suffixes = config['include_suffixes']
-    #print(include_suffixes)
+        compiled_rules = load_rules()
+        config = load_config()
+        exclude_suffixes = config['exclude_suffixes']
+        include_suffixes = config['include_suffixes']
+        #print(include_suffixes)
 
-    results = scan_directory(args.directory, compiled_rules, exclude_suffixes, include_suffixes)
-    
-    # 对特定规则进行二次处理
-    results = process_special_rules(results, compiled_rules)
-    
-    write_results_to_file(results, args.output_file, args.level)
+        results = scan_directory(args.directory, compiled_rules, exclude_suffixes, include_suffixes)
+        # 对特定规则进行二次处理
+        results = process_special_rules(results, compiled_rules)
+        write_results_to_file(results, args.output_file, args.level)
 
-    end_time = time.time()
-    total_time = end_time - start_time
-    print(f"程序运行结束，总运行时间: {total_time:.2f} 秒")
+        end_time = time.time()
+        total_time = end_time - start_time
+        print(f"程序运行结束，总运行时间: {total_time:.2f} 秒")
+    except KeyboardInterrupt:
+        print("\n程序已被用户中断 (Ctrl+C)")
+        print("扫描过程已提前终止，部分结果可能未保存")
+    except Exception as e:
+        print(f"程序运行出错: {type(e).__name__}: {e}")
 
 if __name__ == "__main__":
     main()
